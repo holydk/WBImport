@@ -4,25 +4,21 @@ namespace WBReportImport
 {
     internal class WBReportAnalyser
     {
-        internal const string SALE_DOC_TYPE_NAME = "Продажа";
-
         #region Methods
 
-        public static IEnumerable<WBItemSummary> GetItemTotal(IEnumerable<WBReportLine> report, string barcode)
+        public static IEnumerable<WBItemSummary> GetTotal(IEnumerable<WBReportLine> report)
         {
             ArgumentNullException.ThrowIfNull(report, nameof(report));
-            ArgumentNullException.ThrowIfNullOrEmpty(barcode, nameof(barcode));
 
             var reportByShkId = report
-                .OrderBy(doc => doc.OrderDt)
-                .Where(doc => doc.ShkId > 0 && doc.Barcode.Equals(barcode, StringComparison.OrdinalIgnoreCase))
+                .Where(doc => doc.ShkId > 0)
                 .GroupBy(doc => doc.ShkId);
 
             var items = new List<WBItemSummary>();
 
             foreach (var docsByShkId in reportByShkId)
             {
-                var saleDocument = docsByShkId.FirstOrDefault(doc => doc.DocTypeName == SALE_DOC_TYPE_NAME)
+                var saleDocument = docsByShkId.FirstOrDefault(doc => doc.DocTypeName.Equals(Defaults.SALE_DOC_TYPE_NAME, StringComparison.OrdinalIgnoreCase))
                     ?? docsByShkId.FirstOrDefault();
 
                 if (saleDocument != null)
@@ -40,16 +36,36 @@ namespace WBReportImport
         {
             var itemSummary = new WBItemSummary
             {
+                Article = document.SaName,
+                Barcode = document.Barcode,
                 Cost = document.PpvzForPay,
-                OrderedAt = document.OrderDt,
                 Price = document.RetailPriceWithdiscRub,
                 ShkId = document.ShkId,
+                Size = document.TsName,
+                WBArticle = document.NumberId,
             };
 
             var shkIdAsString = document.ShkId.ToString();
             var expenseDocs = report.Where(doc => doc.NumberId > 0 && (doc.ShkId == document.ShkId || doc.StickerId == shkIdAsString));
             if (expenseDocs?.Any() == true)
             {
+                if (string.IsNullOrEmpty(itemSummary.Article))
+                    itemSummary.Article = expenseDocs.FirstOrDefault(doc => !string.IsNullOrEmpty(doc.SaName))?.SaName;
+
+                if (string.IsNullOrEmpty(itemSummary.Barcode))
+                    itemSummary.Barcode = expenseDocs.FirstOrDefault(doc => !string.IsNullOrEmpty(doc.Barcode))?.Barcode;
+
+                if (string.IsNullOrEmpty(itemSummary.Size))
+                    itemSummary.Size = expenseDocs.FirstOrDefault(doc => !string.IsNullOrEmpty(doc.TsName))?.TsName;
+
+                if (itemSummary.WBArticle == 0)
+                    itemSummary.WBArticle = expenseDocs.FirstOrDefault(doc => doc.NumberId > 0)?.NumberId ?? 0;
+
+                itemSummary.OrderedAt =
+                    !document.DocTypeName.Equals(Defaults.SALE_DOC_TYPE_NAME, StringComparison.OrdinalIgnoreCase)
+                        ? expenseDocs.Where(doc => doc.OrderDt.HasValue).Min(doc => doc.OrderDt)
+                        : document.OrderDt;
+
                 var deliveryCost = decimal.Zero;
                 var expenseItems = new List<(string Name, decimal Cost)>();
 
@@ -81,7 +97,7 @@ namespace WBReportImport
                 }
 
                 itemSummary.DeliveryCost = deliveryCost;
-                itemSummary.ExpenseItems = expenseItems;
+                itemSummary.Documents = expenseItems;
             }
 
             return itemSummary;

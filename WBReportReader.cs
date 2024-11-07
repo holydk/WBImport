@@ -1,6 +1,6 @@
 ﻿namespace WBReportImport
 {
-    public class WBReportReader
+    public sealed class WBReportReader
     {
         #region Fields
 
@@ -41,14 +41,18 @@
             return new WBReportReader(() => File.OpenRead(fileName), WBReportParserFactory.Create(fileName));
         }
 
-        public async Task<IEnumerable<WBReportLine>> GetReportAsync()
+        public async Task<IEnumerable<WBReportLine>> GetReportAsync(DateTime from, DateTime to)
         {
             using var stream = _reportFactory();
 
             if (!stream.CanRead || stream.Length == 0)
                 return null;
 
-            return await _parser.ParseAsync(stream);
+            var report = await _parser.ParseAsync(stream);
+            if (report == null || !report.Any())
+                return null;
+
+            return report.Where(doc => doc.OrderDt >= from && doc.OrderDt <= to);
         }
 
         #endregion Methods

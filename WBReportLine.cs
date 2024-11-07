@@ -73,6 +73,12 @@ namespace WBReportImport
         public decimal RetailPriceWithdiscRub { get; set; }
 
         /// <summary>
+        /// Артикул продавца
+        /// </summary>
+        [JsonPropertyName("sa_name")]
+        public string SaName { get; set; }
+
+        /// <summary>
         /// Штрих-код / стикер WB
         /// </summary>
         [JsonPropertyName("shk_id")]
@@ -89,6 +95,12 @@ namespace WBReportImport
         /// </summary>
         [JsonPropertyName("supplier_oper_name")]
         public string SupplierOperName { get; set; }
+
+        /// <summary>
+        /// Размер
+        /// </summary>
+        [JsonPropertyName("ts_name")]
+        public string TsName { get; set; }
 
         #endregion Properties
     }

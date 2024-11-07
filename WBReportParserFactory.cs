@@ -1,6 +1,6 @@
 ﻿namespace WBReportImport
 {
-    internal class WBReportParserFactory
+    internal sealed class WBReportParserFactory
     {
         private static readonly Dictionary<string, Func<IWBReportParser>> _map = new()
         {
