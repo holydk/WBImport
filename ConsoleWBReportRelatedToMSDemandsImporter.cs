@@ -3,7 +3,7 @@ using Confiti.MoySklad.Remap.Client;
 using Confiti.MoySklad.Remap.Entities;
 using Confiti.MoySklad.Remap.Queries;
 
-namespace WBReportImport
+namespace WBImport
 {
     internal class ConsoleWBReportRelatedToMSDemandsImporter : IWBReportImporter
     {
@@ -26,9 +26,12 @@ namespace WBReportImport
             var processedWbBarcodes = new Dictionary<long, WBItemSummary>();
 
             // todo:
-            // 1. Загрузить поставки WB от минимальной даты из report
-            // 2. Загрузить отгрузки MS от минимальной даты поставки WB
-            // 3. Сопоставить отгрузки MS и поставки WB по названию
+            // 1. Загузить сборочные задания WB от минимальной даты из report
+            // 2. Собрать все уникальные supplyId из сборочных заданий
+            // 3. Получить сборочные задания по IDs
+            // 4. Загрузить отгрузки MS от минимальной даты сборочного задания WB
+            // 5. Сопоставить отгрузки MS и поставки WB по названию
+
             var moment = DateTime.Now.AddMonths(-1);
 
             await foreach (var demand in GetDemandsAsync(moment))
@@ -85,7 +88,7 @@ namespace WBReportImport
                                 {
                                     var status = 0;
 
-                                    foreach (var (name, cost) in itemSummary.Documents)
+                                    foreach (var (name, cost) in itemSummary.Documents.OrderBy(doc => doc.Name))
                                     {
                                         if (name == "Возврат" || name.Contains("при возврате"))
                                             status = 1;

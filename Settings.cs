@@ -1,8 +1,8 @@
 ﻿using System.Text.Json;
 
-namespace WBReportImport
+namespace WBImport
 {
-    public sealed class MoySkladSettings
+    public sealed class MSSettings
     {
         #region Properties
 
@@ -18,7 +18,8 @@ namespace WBReportImport
 
         #region Properties
 
-        public MoySkladSettings MoySklad { get; set; }
+        public MSSettings MoySklad { get; set; }
+        public WBSettings Wildberries { get; set; }
 
         #endregion Properties
 
@@ -26,11 +27,25 @@ namespace WBReportImport
 
         public static async Task<Settings> FromFileAsync(string fileName)
         {
+            ArgumentNullException.ThrowIfNullOrEmpty(fileName, nameof(fileName));
+
+            if (!File.Exists(fileName))
+                throw new InvalidOperationException($"Файл настроек для пути \"{fileName}\" не найден.");
+
             using var fileStream = File.OpenRead(fileName);
 
             return await JsonSerializer.DeserializeAsync<Settings>(fileStream);
         }
 
         #endregion Methods
+    }
+
+    public sealed class WBSettings
+    {
+        #region Properties
+
+        public string AccessToken { get; set; }
+
+        #endregion Properties
     }
 }

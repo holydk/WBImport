@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace WBReportImport
+namespace WBImport
 {
     internal class WBReportAnalyser
     {

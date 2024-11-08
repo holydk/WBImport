@@ -1,4 +1,4 @@
-﻿namespace WBReportImport
+﻿namespace WBImport
 {
     public class ConsoleWBReportImporter : IWBReportImporter
     {
@@ -38,7 +38,7 @@
                 {
                     var status = 0;
 
-                    foreach (var (name, cost) in itemSummary.Documents)
+                    foreach (var (name, cost) in itemSummary.Documents.OrderBy(doc => doc.Name))
                     {
                         if (name == "Возврат" || name.Contains("при возврате"))
                             status = 1;

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace WBReportImport
+namespace WBImport
 {
     public class WBReportLine
     {

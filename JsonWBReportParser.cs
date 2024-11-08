@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace WBReportImport
+namespace WBImport
 {
     internal sealed class JsonWBReportParser : IWBReportParser
     {

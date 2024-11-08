@@ -1,4 +1,4 @@
-﻿namespace WBReportImport
+﻿namespace WBImport
 {
     public class WBItemSummary
     {
