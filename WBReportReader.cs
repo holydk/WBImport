@@ -23,7 +23,7 @@
 
         public static WBReportReader FromFile(string fileName)
         {
-            ArgumentNullException.ThrowIfNullOrEmpty(fileName, nameof(fileName));
+            ArgumentNullException.ThrowIfNullOrEmpty(fileName);
 
             IWBReportParser parser = null;
 

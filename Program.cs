@@ -8,33 +8,53 @@ internal sealed class Program
     {
         await InitSettingsAsync();
 
-        var importerType = GetReportImporterType();
-        if (!importerType.HasValue)
-            return;
+        Console.WriteLine("Выберите раздел:");
+        Console.WriteLine("1 - Поставки");
+        Console.WriteLine("2 - Отчеты");
 
-        var reportFileNames = GetReportFiles();
-        if (reportFileNames == null || !reportFileNames.Any())
+        var key = Console.ReadKey().Key;
+
+        Console.WriteLine();
+
+        if (key == ConsoleKey.D1)
         {
-            Console.WriteLine("Папка с отчетами пуста.");
-            return;
+            Console.WriteLine("Введите код поставки:");
+            var supplyName = Console.ReadLine();
+            Console.WriteLine();
+
+            if (!string.IsNullOrEmpty(supplyName))
+                await new ConsoleWBSupplyImporter().ImportAsync(supplyName);
         }
-
-        // todo: read dateTime from console or settings ?
-        var dateTimeFrom = DateTime.Now.AddMonths(-1);
-        var dateTimeTo = DateTime.Now;
-        var allReports = new List<WBReportLine>();
-
-        foreach (var fileName in reportFileNames)
+        else if (key == ConsoleKey.D2)
         {
-            var report = await WBReportReader
-                .FromFile(fileName).GetReportAsync(dateTimeFrom, dateTimeTo);
-            if (report == null || !report.Any())
-                continue;
+            var importerType = GetReportImporterType();
+            if (!importerType.HasValue)
+                return;
 
-            allReports.AddRange(report);
+            var reportFileNames = GetReportFiles();
+            if (reportFileNames == null || !reportFileNames.Any())
+            {
+                Console.WriteLine("Папка с отчетами пуста.");
+                return;
+            }
+
+            // todo: read dateTime from console or settings ?
+            var dateTimeFrom = DateTime.Now.AddMonths(-1);
+            var dateTimeTo = DateTime.Now;
+            var allReports = new List<WBReportLine>();
+
+            foreach (var fileName in reportFileNames)
+            {
+                var report = await WBReportReader
+                    .FromFile(fileName).GetReportAsync(dateTimeFrom, dateTimeTo);
+                if (report == null || !report.Any())
+                    continue;
+
+                allReports.AddRange(report);
+            }
+
+            await Defaults.ReportImporters[importerType.Value]().ImportAsync(allReports);
         }
-
-        await Defaults.Importers[importerType.Value]().ImportAsync(allReports);
 
         Console.ReadKey();
     }

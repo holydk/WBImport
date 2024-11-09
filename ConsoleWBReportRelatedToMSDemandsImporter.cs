@@ -126,15 +126,12 @@ namespace WBImport
 
                 Console.WriteLine($"Итого за логистику: {deliveryCostTotal}");
 
-                var overheadSum = demand.Overhead?.Sum;
-                if (overheadSum.HasValue)
+                var overheadSum = demand.Overhead?.Sum ?? 0;
+                if (overheadSum != deliveryCostTotal * 100)
                 {
-                    if (overheadSum != deliveryCostTotal * 100)
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"Расхождения по накл. расходам");
-                        Console.ResetColor();
-                    }
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"Расхождения по накл. расходам");
+                    Console.ResetColor();
                 }
 
                 Console.WriteLine();
@@ -155,7 +152,7 @@ namespace WBImport
             var moySkladApi = new MoySkladApi(new MoySkladCredentials
             {
                 AccessToken = settings.AccessToken
-            });
+            }, Defaults.HttpClient);
 
             var query = new ApiParameterBuilder<DemandQuery>();
 
