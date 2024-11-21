@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-
-namespace WBImport
+﻿namespace WBImport
 {
     internal class ConsoleWBSupplyImporter
     {
@@ -8,11 +6,7 @@ namespace WBImport
         {
             ArgumentNullException.ThrowIfNullOrEmpty(supplyId);
 
-            // 1. Получить поставку по ID
-            // 2. Получить сборочные задания в поставке
-            // 3. Создать заказ и отгрузку MS
-
-            var supply = await GetAsync<WBSupply>($"{Defaults.WB_MARKETPLACE_BASE_URL}/supplies/{supplyId}");
+            var supply = await WBClient.GetAsync<WBSupply>($"{Defaults.WB_MARKETPLACE_BASE_URL}/supplies/{supplyId}");
             if (supply == null)
             {
                 Console.WriteLine("Поставка не найдена.");
@@ -22,7 +16,7 @@ namespace WBImport
             Console.WriteLine($"Дата поставки: {supply.CreatedAt}");
             Console.WriteLine();
 
-            var supplyOrders = await GetAsync<WBSupplyOrder>($"{Defaults.WB_MARKETPLACE_BASE_URL}/supplies/{supplyId}/orders");
+            var supplyOrders = await WBClient.GetAsync<WBSupplyOrder>($"{Defaults.WB_MARKETPLACE_BASE_URL}/supplies/{supplyId}/orders");
             var orders = supplyOrders.Orders;
             if (orders == null || orders.Length == 0)
                 return;
@@ -40,7 +34,7 @@ namespace WBImport
                         Console.WriteLine($"Штрих-код: {barcode}");
                 }
 
-                var orderMeta = await GetAsync<WBOrderMeta>($"{Defaults.WB_MARKETPLACE_BASE_URL}/orders/{order.Id}/meta");
+                var orderMeta = await WBClient.GetAsync<WBOrderMeta>($"{Defaults.WB_MARKETPLACE_BASE_URL}/orders/{order.Id}/meta");
                 if (orderMeta != null)
                 {
                     var sGrinValues = orderMeta.Meta?.SGtin?.Value;
@@ -54,29 +48,5 @@ namespace WBImport
                 Console.WriteLine();
             }
         }
-
-        #region Utilities
-
-        private static async Task<T> GetAsync<T>(string path)
-        {
-            var accessToken = Settings.Default?.Wildberries?.AccessToken;
-
-            if (string.IsNullOrEmpty(accessToken))
-                throw new InvalidOperationException("Wildberries access token was empty.");
-
-            using var request = new HttpRequestMessage(HttpMethod.Get, path);
-
-            request.Headers.Add("Authorization", accessToken);
-            request.Headers.Add("Accept", "application/json");
-
-            using var response = await Defaults.HttpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-
-            using var stream = await response.Content.ReadAsStreamAsync();
-
-            return await JsonSerializer.DeserializeAsync<T>(stream);
-        }
-
-        #endregion Utilities
     }
 }

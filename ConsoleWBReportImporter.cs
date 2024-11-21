@@ -23,7 +23,6 @@
                 Console.ForegroundColor = ConsoleColor.Magenta;
                 Console.WriteLine($"{(!string.IsNullOrEmpty(itemSummary.Article) ? itemSummary.Article : '-')} / {itemSummary.WBArticle} " +
                     $"{(!string.IsNullOrEmpty(itemSummary.Size) ? $"(р-р {itemSummary.Size})" : string.Empty)}");
-                Console.WriteLine();
                 Console.ResetColor();
 
                 Console.WriteLine($"\tЦена: {(itemSummary.Price > decimal.Zero ? $"{itemSummary.Price} {Defaults.RUB}" : "-")}");
@@ -38,28 +37,37 @@
                 {
                     var status = 0;
 
-                    foreach (var (name, cost) in itemSummary.Documents.OrderBy(doc => doc.Name))
+                    foreach (var doc in itemSummary.Documents.OrderBy(doc => doc.Name))
                     {
-                        if (name == "Возврат" || name.Contains("при возврате"))
-                            status = 1;
+                        if (doc.OrderedAt >= itemSummary.OrderedAt)
+                        {
+                            if (doc.Name == "Возврат" || doc.Name.Contains("при возврате"))
+                                status = 1;
 
-                        if (name.Contains("при отмене"))
-                            status = 2;
+                            if (doc.Name.Contains("при отмене"))
+                                status = 2;
+                        }
 
-                        if (name.Contains("Штраф"))
+                        if (doc.Name.Contains("Штраф"))
                             Console.ForegroundColor = ConsoleColor.Yellow;
 
-                        Console.WriteLine($"\t{name}: {cost} {Defaults.RUB}");
-                        Console.ResetColor();
+                        Console.WriteLine($"\t{doc.Name}: {doc.Cost} {Defaults.RUB}");
                     }
 
                     if (status > 0)
+                    {
                         Console.ForegroundColor = ConsoleColor.Red;
 
-                    if (status == 1)
-                        Console.WriteLine("\tВозврат");
-                    else if (status == 2)
-                        Console.WriteLine("\tОтмена");
+                        if (status == 1)
+                            Console.WriteLine("\tВозврат");
+                        else if (status == 2)
+                            Console.WriteLine("\tОтмена");
+                    }
+                    else if (itemSummary.Cost > decimal.Zero)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("\tПродажа");
+                    }
 
                     Console.ResetColor();
                 }

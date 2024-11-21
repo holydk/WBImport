@@ -36,6 +36,7 @@ namespace WBImport
                 var reportLine = new WBReportLine
                 {
                     Acceptance = rows[i].ItemArray[36] != DBNull.Value ? Convert.ToDecimal(rows[i].ItemArray[61]) : decimal.Zero,
+                    AssemblyId = rows[i].ItemArray[53] != DBNull.Value ? Convert.ToInt64(rows[i].ItemArray[53]) : 0,
                     Barcode = rows[i].ItemArray[8] != DBNull.Value ? Convert.ToString(rows[i].ItemArray[8]) : string.Empty,
                     BonusTypeName = rows[i].ItemArray[42] != DBNull.Value ? Convert.ToString(rows[i].ItemArray[42]) : string.Empty,
                     DeliveryRub = rows[i].ItemArray[36] != DBNull.Value ? Convert.ToDecimal(rows[i].ItemArray[36]) : decimal.Zero,

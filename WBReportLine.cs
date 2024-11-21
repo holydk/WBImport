@@ -13,6 +13,12 @@ namespace WBImport
         public decimal Acceptance { get; set; }
 
         /// <summary>
+        /// Номер сборочного задания
+        /// </summary>
+        [JsonPropertyName("assembly_id")]
+        public long AssemblyId { get; set; }
+
+        /// <summary>
         /// Штрих-код товара продавца
         /// </summary>
         [JsonPropertyName("barcode")]

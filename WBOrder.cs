@@ -15,6 +15,9 @@ namespace WBImport
         [JsonPropertyName("id")]
         public long Id { get; set; }
 
+        [JsonPropertyName("supplyId")]
+        public string SupplyId { get; set; }
+
         #endregion Properties
     }
 }

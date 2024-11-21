@@ -16,30 +16,83 @@ namespace WBImport
             if (!report.Any())
                 return;
 
-            var itemsTotal = WBReportAnalyser
+            var orderedAtReport = WBReportAnalyser
                 .GetTotal(report)
                 .Where(item => !string.IsNullOrEmpty(item.Barcode))
-                .OrderBy(item => item.OrderedAt)
+                .OrderBy(item => item.OrderedAt);
+
+            var dateTimeFrom = orderedAtReport
+                .FirstOrDefault(summary => summary.OrderedAt.HasValue)
+                ?.OrderedAt
+                ?? DateTime.Now.AddDays(-30);
+
+            var dateTimeTo = orderedAtReport
+                .LastOrDefault(summary => summary.OrderedAt.HasValue)
+                ?.OrderedAt
+                ?? DateTime.Now;
+
+            var itemsTotal = orderedAtReport
                 .GroupBy(item => item.Barcode)
-                .ToDictionary(item => item.Key);
+                .ToDictionary(group => group.Key);
 
-            var processedWbBarcodes = new Dictionary<long, WBItemSummary>();
+            var ordersMaxDateTimeOffsetTo = (DateTimeOffset)dateTimeTo;
+            var ordersDateTimeOffsetFrom = (DateTimeOffset)dateTimeFrom;
+            var ordersDateTimeOffsetTo = (DateTimeOffset)dateTimeFrom.AddDays(30);
+            var next = 0L;
+            var limit = 100;
 
-            // todo:
-            // 1. Загузить сборочные задания WB от минимальной даты из report
-            // 2. Собрать все уникальные supplyId из сборочных заданий
-            // 3. Получить сборочные задания по IDs
-            // 4. Загрузить отгрузки MS от минимальной даты сборочного задания WB
-            // 5. Сопоставить отгрузки MS и поставки WB по названию
+            var allOrders = new List<WBOrder>();
 
-            var moment = DateTime.Now.AddMonths(-1);
+            do
+            {
+                do
+                {
+                    var response = await WBClient.GetAsync<WBOrders>(
+                        $"{Defaults.WB_MARKETPLACE_BASE_URL}/orders",
+                        new()
+                        {
+                            ["limit"] = limit.ToString(),
+                            ["next"] = next.ToString(),
+                            ["dateFrom"] = ordersDateTimeOffsetFrom.ToUnixTimeSeconds().ToString(),
+                            ["dateTo"] = ordersDateTimeOffsetTo.ToUnixTimeSeconds().ToString()
+                        });
 
-            await foreach (var demand in GetDemandsAsync(moment))
+                    allOrders.AddRange(response.Orders);
+
+                    next = response.Next;
+                }
+                while (next > 0);
+
+                ordersDateTimeOffsetFrom = ordersDateTimeOffsetTo;
+                ordersDateTimeOffsetTo = ordersDateTimeOffsetFrom.AddDays(30);
+
+                if (ordersDateTimeOffsetTo > ordersMaxDateTimeOffsetTo)
+                    ordersDateTimeOffsetTo = ordersMaxDateTimeOffsetTo;
+            }
+            while (ordersDateTimeOffsetFrom < ordersDateTimeOffsetTo);
+
+            if (allOrders.Count == 0)
+                return;
+
+            var processedStickerIds = new Dictionary<long, WBItemSummary>();
+            var ordersBySupplyId = allOrders
+                .Where(order => !string.IsNullOrEmpty(order.SupplyId))
+                .GroupBy(order => order.SupplyId)
+                .ToDictionary(group => group.Key);
+
+            await foreach (var demand in GetDemandsAsync(dateTimeFrom))
             {
                 var positions = demand.Positions?.Rows;
                 if (positions == null || positions.Length == 0)
                     continue;
 
+                if (string.IsNullOrEmpty(demand.Name) || !demand.Name.StartsWith("WB"))
+                    continue;
+
+                if (!ordersBySupplyId.TryGetValue(demand.Name, out var supplyOrders))
+                    continue;
+
+                var supplyOrdersById = supplyOrders.ToDictionary(order => order.Id);
                 var deliveryCostTotal = decimal.Zero;
 
                 Console.ForegroundColor = ConsoleColor.Magenta;
@@ -58,68 +111,94 @@ namespace WBImport
                         if (!itemsTotal.TryGetValue(barcode.Value, out var itemTotal))
                             continue;
 
-                        if (itemTotal?.Any() == true)
+                        foreach (var itemSummary in itemTotal)
                         {
-                            foreach (var itemSummary in itemTotal)
+                            if (processedStickerIds.TryGetValue(itemSummary.ShkId, out _))
+                                continue;
+
+                            var orderId = itemSummary.OrderId == 0
+                                // the order ID can be 0 if item was sold by WB warehouse
+                                // steps to reproduce
+                                // 1. Seller uses FBO with auto return to pick-up point
+                                // 2. Item was sold
+                                // 3. Return was requested
+                                // 4. Item go to WB warehouse
+                                // 5. Item was sold twice
+                                // 6. Then new sale document has order ID = 0
+                                // and we should find previous document with order ID
+                                ? itemSummary.Documents.FirstOrDefault(doc => doc.OrderId > 0)?.OrderId
+                                : itemSummary.OrderId;
+
+                            if (!orderId.HasValue || orderId == 0)
+                                continue;
+
+                            if (!supplyOrdersById.TryGetValue(orderId.Value, out var _))
+                                continue;
+
+                            deliveryCostTotal += itemSummary.DeliveryCost;
+
+                            var article = position.Assortment switch
                             {
-                                if (processedWbBarcodes.TryGetValue(itemSummary.ShkId, out _))
-                                    continue;
+                                Product product => product.Article,
+                                Variant variant => variant.Product.Article,
+                                Bundle bundle => bundle.Article,
+                                _ => string.Empty
+                            };
 
-                                deliveryCostTotal += itemSummary.DeliveryCost;
+                            Console.WriteLine($"{(!string.IsNullOrEmpty(article) ? $"{article} " : string.Empty)}{position.Assortment.Name}");
+                            Console.WriteLine($"\tЦена: {(itemSummary.Price > decimal.Zero ? $"{itemSummary.Price} {Defaults.RUB}" : "-")}");
+                            Console.WriteLine($"\tКомиссия: {(itemSummary.Price > decimal.Zero && itemSummary.Cost > decimal.Zero ? $"{itemSummary.Price - itemSummary.Cost} {Defaults.RUB}" : "-")}");
+                            Console.WriteLine($"\tК выплате: {(itemSummary.Cost > decimal.Zero ? $"{itemSummary.Cost} {Defaults.RUB}" : "-")}");
+                            Console.WriteLine($"\tИтого за логистику: {itemSummary.DeliveryCost} {Defaults.RUB}");
 
-                                var article = position.Assortment switch
+                            if (itemSummary.OrderedAt.HasValue)
+                                Console.WriteLine($"\tДата заказа: {itemSummary.OrderedAt.Value}");
+
+                            if (itemSummary.Documents?.Any() == true)
+                            {
+                                var status = 0;
+
+                                foreach (var doc in itemSummary.Documents.OrderBy(doc => doc.Name))
                                 {
-                                    Product product => product.Article,
-                                    Variant variant => variant.Product.Article,
-                                    Bundle bundle => bundle.Article,
-                                    _ => string.Empty
-                                };
-
-                                Console.WriteLine($"{(!string.IsNullOrEmpty(article) ? $"{article} " : string.Empty)}{position.Assortment.Name}");
-                                Console.WriteLine($"\tЦена: {(itemSummary.Price > decimal.Zero ? $"{itemSummary.Price} {Defaults.RUB}" : "-")}");
-                                Console.WriteLine($"\tКомиссия: {(itemSummary.Price > decimal.Zero && itemSummary.Cost > decimal.Zero ? $"{itemSummary.Price - itemSummary.Cost} {Defaults.RUB}" : "-")}");
-                                Console.WriteLine($"\tК выплате: {(itemSummary.Cost > decimal.Zero ? $"{itemSummary.Cost} {Defaults.RUB}" : "-")}");
-                                Console.WriteLine($"\tИтого за логистику: {itemSummary.DeliveryCost} {Defaults.RUB}");
-
-                                if (itemSummary.OrderedAt.HasValue)
-                                    Console.WriteLine($"\tДата заказа: {itemSummary.OrderedAt.Value}");
-
-                                if (itemSummary.Documents?.Any() == true)
-                                {
-                                    var status = 0;
-
-                                    foreach (var (name, cost) in itemSummary.Documents.OrderBy(doc => doc.Name))
+                                    if (doc.OrderedAt >= itemSummary.OrderedAt)
                                     {
-                                        if (name == "Возврат" || name.Contains("при возврате"))
+                                        if (doc.Name == "Возврат" || doc.Name.Contains("при возврате"))
                                             status = 1;
 
-                                        if (name.Contains("при отмене"))
+                                        if (doc.Name.Contains("при отмене"))
                                             status = 2;
-
-                                        if (name.Contains("Штраф"))
-                                            Console.ForegroundColor = ConsoleColor.Yellow;
-
-                                        Console.WriteLine($"\t{name}: {cost} {Defaults.RUB}");
-                                        Console.ResetColor();
                                     }
 
-                                    if (status > 0)
-                                        Console.ForegroundColor = ConsoleColor.Red;
+                                    if (doc.Name.Contains("Штраф"))
+                                        Console.ForegroundColor = ConsoleColor.Yellow;
+
+                                    Console.WriteLine($"\t{doc.Name}: {doc.Cost} {Defaults.RUB}");
+                                    Console.ResetColor();
+                                }
+
+                                if (status > 0)
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Red;
 
                                     if (status == 1)
                                         Console.WriteLine("\tВозврат");
                                     else if (status == 2)
                                         Console.WriteLine("\tОтмена");
-
-                                    Console.ResetColor();
+                                }
+                                else if (itemSummary.Cost > decimal.Zero)
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Green;
+                                    Console.WriteLine("\tПродажа");
                                 }
 
-                                Console.WriteLine();
-
-                                processedWbBarcodes[itemSummary.ShkId] = itemSummary;
-
-                                break;
+                                Console.ResetColor();
                             }
+
+                            Console.WriteLine();
+
+                            processedStickerIds[itemSummary.ShkId] = itemSummary;
+
+                            break;
                         }
                     }
                 }
@@ -142,7 +221,7 @@ namespace WBImport
 
         #region Utilities
 
-        private static async IAsyncEnumerable<Demand> GetDemandsAsync(DateTime moment)
+        private static async IAsyncEnumerable<Demand> GetDemandsAsync(DateTime? momentFrom = null)
         {
             var settings = Settings.Default?.MoySklad;
 
@@ -157,7 +236,12 @@ namespace WBImport
             var query = new ApiParameterBuilder<DemandQuery>();
 
             query.Limit(100);
-            query.Parameter("moment").Should().BeGreaterOrEqualTo(moment.ToString(Defaults.DATE_TIME_FORMAT));
+
+            if (momentFrom.HasValue)
+                query.Parameter("moment").Should().BeGreaterOrEqualTo(momentFrom.Value.ToString(Defaults.DATE_TIME_FORMAT));
+
+            query.Parameter("name").Should().StartsWith("WB");
+
             query.Expand()
                 .With(x => x.Positions).And
                 .With("positions.assortment").And

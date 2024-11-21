@@ -18,8 +18,11 @@ namespace WBImport
 
             foreach (var docsByShkId in reportByShkId)
             {
-                var saleDocument = docsByShkId.FirstOrDefault(doc => doc.DocTypeName.Equals(Defaults.SALE_DOC_TYPE_NAME, StringComparison.OrdinalIgnoreCase))
-                    ?? docsByShkId.FirstOrDefault();
+                var saleDocument = docsByShkId
+                    .Where(doc => doc.DocTypeName.Equals(Defaults.SALE_DOC_TYPE_NAME, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(doc => doc.OrderDt)
+                    .LastOrDefault()
+                    ?? docsByShkId.FirstOrDefault(doc => doc.AssemblyId > 0);
 
                 if (saleDocument != null)
                     items.Add(CreateItemSummary(report, saleDocument));
@@ -39,6 +42,7 @@ namespace WBImport
                 Article = document.SaName,
                 Barcode = document.Barcode,
                 Cost = document.PpvzForPay,
+                OrderId = document.AssemblyId,
                 Price = document.RetailPriceWithdiscRub,
                 ShkId = document.ShkId,
                 Size = document.TsName,
@@ -67,7 +71,7 @@ namespace WBImport
                         : document.OrderDt;
 
                 var deliveryCost = decimal.Zero;
-                var expenseItems = new List<(string Name, decimal Cost)>();
+                var expenseItems = new List<WBItemSummaryDocument>();
 
                 foreach (var doc in expenseDocs)
                 {
@@ -85,7 +89,6 @@ namespace WBImport
                     var cost =
                         doc.Acceptance +
                         doc.DeliveryRub +
-                        doc.RebillLogisticCost +
                         doc.Penalty;
 
                     deliveryCost += cost;
@@ -93,7 +96,13 @@ namespace WBImport
                     if (cost == decimal.Zero)
                         cost = doc.PpvzForPay;
 
-                    expenseItems.Add(new(nameBuider.ToString(), cost));
+                    expenseItems.Add(new()
+                    {
+                        Cost = cost,
+                        Name = nameBuider.ToString(),
+                        OrderedAt = doc.OrderDt,
+                        OrderId = doc.AssemblyId
+                    });
                 }
 
                 itemSummary.DeliveryCost = deliveryCost;
