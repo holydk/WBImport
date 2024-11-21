@@ -39,14 +39,13 @@ internal sealed class Program
             }
 
             // todo: read dateTime from console or settings ?
-            var dateTimeFrom = DateTime.Now.AddMonths(-1);
-            var dateTimeTo = DateTime.Now;
+
             var allReports = new List<WBReportLine>();
 
             foreach (var fileName in reportFileNames)
             {
                 var report = await WBReportReader
-                    .FromFile(fileName).GetReportAsync(dateTimeFrom, dateTimeTo);
+                    .FromFile(fileName).GetReportAsync();
                 if (report == null || !report.Any())
                     continue;
 

@@ -41,7 +41,7 @@
             return new WBReportReader(() => File.OpenRead(fileName), WBReportParserFactory.Create(fileName));
         }
 
-        public async Task<IEnumerable<WBReportLine>> GetReportAsync(DateTime from, DateTime to)
+        public async Task<IEnumerable<WBReportLine>> GetReportAsync(DateTime? from = null, DateTime? to = null)
         {
             using var stream = _reportFactory();
 
@@ -52,7 +52,13 @@
             if (report == null || !report.Any())
                 return null;
 
-            return report.Where(doc => doc.OrderDt >= from && doc.OrderDt <= to);
+            if (from.HasValue)
+                report = report.Where(doc => doc.OrderDt >= from);
+
+            if (to.HasValue)
+                report = report.Where(doc => doc.OrderDt <= to);
+
+            return report;
         }
 
         #endregion Methods
