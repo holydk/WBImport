@@ -10,6 +10,11 @@
         /// <summary>
         /// Import to console. The products in the report are related to the demands of ERP MoySklad.
         /// </summary>
-        ConsoleRelatedToMoySkladDemands
+        ConsoleRelatedToMoySkladDemands,
+
+        /// <summary>
+        /// Update the related MoySklad demands.
+        /// </summary>
+        UpdateMSDemands
     }
 }

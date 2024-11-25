@@ -1,8 +1,10 @@
-﻿using Confiti.MoySklad.Remap.Entities;
+﻿using Confiti.MoySklad.Remap.Api;
+using Confiti.MoySklad.Remap.Client;
+using Confiti.MoySklad.Remap.Entities;
 
 namespace WBImport
 {
-    internal class ConsoleWBReportRelatedToMSDemandsImporter : IWBReportImporter
+    internal class UpdateMSDemandsWBReportImporter : IWBReportImporter
     {
         #region Methods
 
@@ -77,8 +79,14 @@ namespace WBImport
                 .GroupBy(order => order.SupplyId)
                 .ToDictionary(group => group.Key);
 
+            var demandsToUpdate = new List<Demand>();
+
+            var shouldBeUpdate = false;
+
             await foreach (var demand in MSClient.GetDemandsAsync(dateTimeFrom))
             {
+                shouldBeUpdate = false;
+
                 var positions = demand.Positions?.Rows;
                 if (positions == null || positions.Length == 0)
                     continue;
@@ -91,11 +99,6 @@ namespace WBImport
 
                 var supplyOrdersById = supplyOrders.ToDictionary(order => order.Id);
                 var deliveryCostTotal = decimal.Zero;
-
-                Console.ForegroundColor = ConsoleColor.Magenta;
-                Console.WriteLine($"Отгрузка № {demand.Name}");
-                Console.WriteLine();
-                Console.ResetColor();
 
                 foreach (var position in positions)
                 {
@@ -134,67 +137,13 @@ namespace WBImport
 
                             deliveryCostTotal += itemSummary.DeliveryCost;
 
-                            var article = position.Assortment switch
+                            if (itemSummary.Cost > decimal.Zero && position.Price != itemSummary.Cost * 100)
                             {
-                                Product product => product.Article,
-                                Variant variant => variant.Product.Article,
-                                Bundle bundle => bundle.Article,
-                                _ => string.Empty
-                            };
+                                Console.WriteLine($"{demand.Name}. Обновить цену \"{position.Assortment.Name}\": {position.Price / 100} -> {itemSummary.Cost}");
+                                position.Price = (long)(itemSummary.Cost * 100);
 
-                            Console.WriteLine($"{(!string.IsNullOrEmpty(article) ? $"{article} " : string.Empty)}{position.Assortment.Name}");
-                            Console.WriteLine($"\tЦена: {(itemSummary.Price > decimal.Zero ? $"{itemSummary.Price} {Defaults.RUB}" : "-")}");
-                            Console.WriteLine($"\tКомиссия: {(itemSummary.Price > decimal.Zero && itemSummary.Cost > decimal.Zero ? $"{itemSummary.Price - itemSummary.Cost} {Defaults.RUB}" : "-")}");
-                            Console.WriteLine($"\tК выплате: {(itemSummary.Cost > decimal.Zero ? $"{itemSummary.Cost} {Defaults.RUB}" : "-")}");
-                            Console.WriteLine($"\tИтого за логистику: {itemSummary.DeliveryCost} {Defaults.RUB}");
-
-                            if (itemSummary.OrderedAt.HasValue)
-                                Console.WriteLine($"\tДата заказа: {itemSummary.OrderedAt.Value}");
-
-                            Console.WriteLine($"\t№ заказа: {orderId.Value}");
-                            Console.WriteLine($"\t№ стикера: {itemSummary.ShkId}");
-
-                            if (itemSummary.Documents?.Any() == true)
-                            {
-                                var status = 0;
-
-                                foreach (var doc in itemSummary.Documents.OrderBy(doc => doc.Name))
-                                {
-                                    if (doc.OrderedAt >= itemSummary.OrderedAt)
-                                    {
-                                        if (doc.Name == "Возврат" || doc.Name.Contains("при возврате"))
-                                            status = 1;
-
-                                        if (doc.Name.Contains("при отмене"))
-                                            status = 2;
-                                    }
-
-                                    if (doc.Name.Contains("Штраф"))
-                                        Console.ForegroundColor = ConsoleColor.Yellow;
-
-                                    Console.WriteLine($"\t{doc.Name}: {doc.Cost} {Defaults.RUB}");
-                                    Console.ResetColor();
-                                }
-
-                                if (status > 0)
-                                {
-                                    Console.ForegroundColor = ConsoleColor.Red;
-
-                                    if (status == 1)
-                                        Console.WriteLine("\tВозврат");
-                                    else if (status == 2)
-                                        Console.WriteLine("\tОтмена");
-                                }
-                                else if (itemSummary.Cost > decimal.Zero)
-                                {
-                                    Console.ForegroundColor = ConsoleColor.Green;
-                                    Console.WriteLine("\tПродажа");
-                                }
-
-                                Console.ResetColor();
+                                shouldBeUpdate = true;
                             }
-
-                            Console.WriteLine();
 
                             processedStickerIds[itemSummary.ShkId] = itemSummary;
 
@@ -203,18 +152,61 @@ namespace WBImport
                     }
                 }
 
-                Console.WriteLine($"Итого за логистику: {deliveryCostTotal}");
-
                 var overheadSum = demand.Overhead?.Sum ?? 0;
                 if (overheadSum != deliveryCostTotal * 100)
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"Расхождения по накл. расходам");
-                    Console.ResetColor();
+                    Console.WriteLine($"{demand.Name}. Обновить накл. расходы: {overheadSum / 100} -> {deliveryCostTotal}");
+
+                    if (demand.Overhead != null)
+                        demand.Overhead.Sum = (long)(deliveryCostTotal * 100);
+                    else
+                    {
+                        demand.Overhead = new DocumentOverhead
+                        {
+                            Distribution = OverheadDistributionType.Price,
+                            Sum = (long)(deliveryCostTotal * 100),
+                        };
+                    }
+
+                    shouldBeUpdate = true;
                 }
 
-                Console.WriteLine();
+                if (shouldBeUpdate)
+                    demandsToUpdate.Add(demand);
             }
+
+            Console.WriteLine();
+
+            if (demandsToUpdate.Count == 0)
+            {
+                Console.WriteLine("Нет отгрузок для обновления.");
+                Console.WriteLine();
+                return;
+            }    
+
+            Console.WriteLine("Обновить отгрузки? (y, n)");
+
+            switch (Console.ReadKey().Key)
+            {
+                case ConsoleKey.Y:
+
+                    var settings = Settings.Default?.MoySklad;
+
+                    if (string.IsNullOrEmpty(settings?.AccessToken))
+                        throw new InvalidOperationException("MoySklad access token was empty.");
+
+                    var moySkladApi = new MoySkladApi(new MoySkladCredentials
+                    {
+                        AccessToken = settings.AccessToken
+                    }, Defaults.HttpClient);
+
+                    foreach (var demand in demandsToUpdate)
+                        await moySkladApi.Demand.UpdateAsync(demand);
+
+                    break;
+            }
+
+            Console.WriteLine();
         }
 
         #endregion Methods

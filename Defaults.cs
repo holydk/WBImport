@@ -7,7 +7,8 @@ namespace WBImport
         public static Dictionary<WBReportImporterType, Func<IWBReportImporter>> ReportImporters = new()
         {
             [WBReportImporterType.Console] = () => new ConsoleWBReportImporter(),
-            [WBReportImporterType.ConsoleRelatedToMoySkladDemands] = () => new ConsoleWBReportRelatedToMSDemandsImporter()
+            [WBReportImporterType.ConsoleRelatedToMoySkladDemands] = () => new ConsoleWBReportRelatedToMSDemandsImporter(),
+            [WBReportImporterType.UpdateMSDemands] = () => new UpdateMSDemandsWBReportImporter()
         };
 
         internal const string DATE_TIME_FORMAT = "yyyy-MM-dd";

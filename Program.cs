@@ -8,54 +8,59 @@ internal sealed class Program
     {
         await InitSettingsAsync();
 
-        Console.WriteLine("Выберите раздел:");
-        Console.WriteLine("1 - Поставки");
-        Console.WriteLine("2 - Отчеты");
-
-        var key = Console.ReadKey().Key;
-
-        Console.WriteLine();
-
-        if (key == ConsoleKey.D1)
+        while (true)
         {
-            Console.WriteLine("Введите код поставки:");
-            var supplyName = Console.ReadLine();
+            Console.WriteLine("Выберите раздел:");
+            Console.WriteLine("1 - Поставки");
+            Console.WriteLine("2 - Отчеты");
+
+            var key = Console.ReadKey().Key;
+
             Console.WriteLine();
 
-            if (!string.IsNullOrEmpty(supplyName))
-                await new ConsoleWBSupplyImporter().ImportAsync(supplyName);
-        }
-        else if (key == ConsoleKey.D2)
-        {
-            var importerType = GetReportImporterType();
-            if (!importerType.HasValue)
-                return;
-
-            var reportFileNames = GetReportFiles();
-            if (reportFileNames == null || !reportFileNames.Any())
+            if (key == ConsoleKey.D1)
             {
-                Console.WriteLine("Папка с отчетами пуста.");
+                Console.WriteLine("Введите код поставки:");
+                var supplyName = Console.ReadLine();
+                Console.WriteLine();
+
+                if (!string.IsNullOrEmpty(supplyName))
+                    await new ConsoleWBSupplyImporter().ImportAsync(supplyName);
+            }
+            else if (key == ConsoleKey.D2)
+            {
+                var importerType = GetReportImporterType();
+                if (!importerType.HasValue)
+                    return;
+
+                var reportFileNames = GetReportFiles();
+                if (reportFileNames == null || !reportFileNames.Any())
+                {
+                    Console.WriteLine("Папка с отчетами пуста.");
+                    return;
+                }
+
+                // todo: read dateTime from console or settings ?
+
+                var allReports = new List<WBReportLine>();
+
+                foreach (var fileName in reportFileNames)
+                {
+                    var report = await WBReportReader
+                        .FromFile(fileName).GetReportAsync();
+                    if (report == null || !report.Any())
+                        continue;
+
+                    allReports.AddRange(report);
+                }
+
+                await Defaults.ReportImporters[importerType.Value]().ImportAsync(allReports);
+            }
+            else
+            {
                 return;
             }
-
-            // todo: read dateTime from console or settings ?
-
-            var allReports = new List<WBReportLine>();
-
-            foreach (var fileName in reportFileNames)
-            {
-                var report = await WBReportReader
-                    .FromFile(fileName).GetReportAsync();
-                if (report == null || !report.Any())
-                    continue;
-
-                allReports.AddRange(report);
-            }
-
-            await Defaults.ReportImporters[importerType.Value]().ImportAsync(allReports);
         }
-
-        Console.ReadKey();
     }
 
     #endregion Methods
@@ -77,6 +82,7 @@ internal sealed class Program
         Console.WriteLine("Куда импортировать?");
         Console.WriteLine("1 - в консоль");
         Console.WriteLine("2 - в консоль и соотнести с отгрузками МойСклад");
+        Console.WriteLine("3 - обновить отгрузки МойСклад");
 
         var key = Console.ReadKey().Key;
 
@@ -86,6 +92,7 @@ internal sealed class Program
         {
             ConsoleKey.D1 => WBReportImporterType.Console,
             ConsoleKey.D2 => WBReportImporterType.ConsoleRelatedToMoySkladDemands,
+            ConsoleKey.D3 => WBReportImporterType.UpdateMSDemands,
             _ => null
         };
     }
