@@ -1,4 +1,4 @@
-﻿namespace WBImport
+﻿namespace WBImport.Models
 {
     public class WBItemSummary
     {

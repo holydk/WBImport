@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace WBImport
+namespace WBImport.Models
 {
     public class SGtinMeta
     {

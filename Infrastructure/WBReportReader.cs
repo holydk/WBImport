@@ -1,6 +1,9 @@
-﻿namespace WBImport
+﻿using WBImport.Models;
+using WBImport.Parsers;
+
+namespace WBImport.Infrastructure
 {
-    public sealed class WBReportReader
+    internal sealed class WBReportReader
     {
         #region Fields
 
@@ -23,7 +26,7 @@
 
         public static WBReportReader FromFile(string fileName)
         {
-            ArgumentNullException.ThrowIfNullOrEmpty(fileName);
+            ArgumentException.ThrowIfNullOrEmpty(fileName);
 
             IWBReportParser parser = null;
 
@@ -38,7 +41,7 @@
             if (parser == null)
                 return new WBReportReader(() => Stream.Null, null);
 
-            return new WBReportReader(() => File.OpenRead(fileName), WBReportParserFactory.Create(fileName));
+            return new WBReportReader(() => File.OpenRead(fileName), parser);
         }
 
         public async Task<IEnumerable<WBReportLine>> GetReportAsync(DateTime? from = null, DateTime? to = null)

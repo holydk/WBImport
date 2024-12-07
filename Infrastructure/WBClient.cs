@@ -2,15 +2,15 @@
 using System.Text.Json;
 using System.Web;
 
-namespace WBImport
+namespace WBImport.Infrastructure
 {
-    public static class WBClient
+    internal static class WBClient
     {
         #region Methods
 
         public static async Task<T> GetAsync<T>(string path, Dictionary<string, string> query = null, object body = null)
         {
-            ArgumentNullException.ThrowIfNullOrWhiteSpace(path);
+            ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
             var accessToken = Settings.Default?.Wildberries?.AccessToken;
             if (string.IsNullOrEmpty(accessToken))

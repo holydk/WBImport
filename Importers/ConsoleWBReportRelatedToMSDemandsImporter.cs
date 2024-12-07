@@ -1,6 +1,8 @@
 ﻿using Confiti.MoySklad.Remap.Entities;
+using WBImport.Infrastructure;
+using WBImport.Models;
 
-namespace WBImport
+namespace WBImport.Importers
 {
     internal class ConsoleWBReportRelatedToMSDemandsImporter : IWBReportImporter
     {
@@ -113,23 +115,10 @@ namespace WBImport
                             if (processedStickerIds.TryGetValue(itemSummary.ShkId, out _))
                                 continue;
 
-                            var orderId = itemSummary.OrderId == 0
-                                // the order ID can be 0 if item was sold by WB warehouse
-                                // steps to reproduce
-                                // 1. Seller uses FBO with auto return to pick-up point
-                                // 2. Item was sold
-                                // 3. Return was requested
-                                // 4. Item go to WB warehouse
-                                // 5. Item was sold twice
-                                // 6. Then new sale document has order ID = 0
-                                // and we should find previous document with order ID
-                                ? itemSummary.Documents.FirstOrDefault(doc => doc.OrderId > 0)?.OrderId
-                                : itemSummary.OrderId;
-
-                            if (!orderId.HasValue || orderId == 0)
+                            if (itemSummary.OrderId == 0)
                                 continue;
 
-                            if (!supplyOrdersById.TryGetValue(orderId.Value, out var _))
+                            if (!supplyOrdersById.TryGetValue(itemSummary.OrderId, out var _))
                                 continue;
 
                             deliveryCostTotal += itemSummary.DeliveryCost;
@@ -144,15 +133,26 @@ namespace WBImport
 
                             Console.WriteLine($"{(!string.IsNullOrEmpty(article) ? $"{article} " : string.Empty)}{position.Assortment.Name}");
                             Console.WriteLine($"\tЦена: {(itemSummary.Price > decimal.Zero ? $"{itemSummary.Price} {Defaults.RUB}" : "-")}");
-                            Console.WriteLine($"\tКомиссия: {(itemSummary.Price > decimal.Zero && itemSummary.Cost > decimal.Zero ? $"{itemSummary.Price - itemSummary.Cost} {Defaults.RUB}" : "-")}");
+
+                            Console.Write($"\tКомиссия: ");
+
+                            if (itemSummary.Price > decimal.Zero && itemSummary.Cost > decimal.Zero)
+                                Console.WriteLine($"{itemSummary.Price - itemSummary.Cost} {Defaults.RUB} ({Math.Round((1 - itemSummary.Cost / itemSummary.Price) * 100, 2)} %)");
+                            else
+                                Console.WriteLine("-");
+
+                            //Console.WriteLine($"\tКомиссия: {(itemSummary.Price > decimal.Zero && itemSummary.Cost > decimal.Zero ? $"{itemSummary.Price - itemSummary.Cost} {Defaults.RUB}" : "-")}");
                             Console.WriteLine($"\tК выплате: {(itemSummary.Cost > decimal.Zero ? $"{itemSummary.Cost} {Defaults.RUB}" : "-")}");
                             Console.WriteLine($"\tИтого за логистику: {itemSummary.DeliveryCost} {Defaults.RUB}");
 
                             if (itemSummary.OrderedAt.HasValue)
                                 Console.WriteLine($"\tДата заказа: {itemSummary.OrderedAt.Value}");
 
-                            Console.WriteLine($"\t№ заказа: {orderId.Value}");
+                            Console.WriteLine($"\t№ заказа: {itemSummary.OrderId}");
                             Console.WriteLine($"\t№ стикера: {itemSummary.ShkId}");
+
+                            foreach (var barcodeToPrint in barcodes)
+                                Console.WriteLine($"\tБаркод: {barcodeToPrint.Value}");
 
                             if (itemSummary.Documents?.Any() == true)
                             {
@@ -160,7 +160,9 @@ namespace WBImport
 
                                 foreach (var doc in itemSummary.Documents.OrderBy(doc => doc.Name))
                                 {
-                                    if (doc.OrderedAt >= itemSummary.OrderedAt)
+                                    if (!itemSummary.OrderedAt.HasValue
+                                            || doc.OrderedAt.HasValue
+                                                || doc.OrderedAt.Value.Date >= itemSummary.OrderedAt.Value.Date)
                                     {
                                         if (doc.Name == "Возврат" || doc.Name.Contains("при возврате"))
                                             status = 1;

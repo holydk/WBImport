@@ -1,8 +1,9 @@
 ﻿using System.Text;
+using WBImport.Models;
 
-namespace WBImport
+namespace WBImport.Infrastructure
 {
-    internal class WBReportAnalyser
+    internal sealed class WBReportAnalyser
     {
         #region Methods
 
@@ -42,7 +43,6 @@ namespace WBImport
                 Article = document.SaName,
                 Barcode = document.Barcode,
                 Cost = document.PpvzForPay,
-                OrderId = document.AssemblyId,
                 Price = document.RetailPriceWithdiscRub,
                 ShkId = document.ShkId,
                 Size = document.TsName,
@@ -69,6 +69,19 @@ namespace WBImport
                     !document.DocTypeName.Equals(Defaults.SALE_DOC_TYPE_NAME, StringComparison.OrdinalIgnoreCase)
                         ? expenseDocs.Where(doc => doc.OrderDt.HasValue).Min(doc => doc.OrderDt)
                         : document.OrderDt;
+
+                itemSummary.OrderId = document.AssemblyId == 0
+                    // the order ID can be 0 if item was sold by WB warehouse
+                    // steps to reproduce
+                    // 1. Seller uses FBO with auto return to pick-up point
+                    // 2. Item was sold
+                    // 3. Return was requested
+                    // 4. Item go to WB warehouse
+                    // 5. Item was sold twice
+                    // 6. Then new sale document has order ID = 0
+                    // and we should find previous document with order ID
+                    ? expenseDocs.FirstOrDefault(doc => doc.AssemblyId > 0)?.AssemblyId ?? 0
+                    : document.AssemblyId;
 
                 var deliveryCost = decimal.Zero;
                 var expenseItems = new List<WBItemSummaryDocument>();

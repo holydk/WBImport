@@ -1,4 +1,6 @@
-﻿namespace WBImport
+﻿using WBImport.Models;
+
+namespace WBImport.Importers
 {
     public interface IWBReportImporter
     {

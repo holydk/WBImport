@@ -1,6 +1,9 @@
-﻿namespace WBImport
+﻿using WBImport.Infrastructure;
+using WBImport.Models;
+
+namespace WBImport.Importers
 {
-    public class ConsoleWBReportImporter : IWBReportImporter
+    internal class ConsoleWBReportImporter : IWBReportImporter
     {
         #region Methods
 
@@ -26,12 +29,27 @@
                 Console.ResetColor();
 
                 Console.WriteLine($"\tЦена: {(itemSummary.Price > decimal.Zero ? $"{itemSummary.Price} {Defaults.RUB}" : "-")}");
-                Console.WriteLine($"\tКомиссия: {(itemSummary.Price > decimal.Zero && itemSummary.Cost > decimal.Zero ? $"{itemSummary.Price - itemSummary.Cost} {Defaults.RUB}" : "-")}");
+
+                Console.Write($"\tКомиссия: ");
+
+                if (itemSummary.Price > decimal.Zero && itemSummary.Cost > decimal.Zero)
+                    Console.WriteLine($"{itemSummary.Price - itemSummary.Cost} {Defaults.RUB} ({Math.Round((1 - itemSummary.Cost / itemSummary.Price) * 100, 2)} %)");
+                else
+                    Console.WriteLine("-");
+
                 Console.WriteLine($"\tК выплате: {(itemSummary.Cost > decimal.Zero ? $"{itemSummary.Cost} {Defaults.RUB}" : "-")}");
                 Console.WriteLine($"\tИтого за логистику: {itemSummary.DeliveryCost} {Defaults.RUB}");
 
                 if (itemSummary.OrderedAt.HasValue)
                     Console.WriteLine($"\tДата заказа: {itemSummary.OrderedAt.Value}");
+
+                if (itemSummary.OrderId > 0)
+                    Console.WriteLine($"\t№ заказа: {itemSummary.OrderId}");
+
+                Console.WriteLine($"\t№ стикера: {itemSummary.ShkId}");
+
+                if (!string.IsNullOrEmpty(itemSummary.Barcode))
+                    Console.WriteLine($"\tБаркод: {itemSummary.Barcode}");
 
                 if (itemSummary.Documents?.Any() == true)
                 {
@@ -39,7 +57,9 @@
 
                     foreach (var doc in itemSummary.Documents.OrderBy(doc => doc.Name))
                     {
-                        if (doc.OrderedAt >= itemSummary.OrderedAt)
+                        if (!itemSummary.OrderedAt.HasValue
+                                || doc.OrderedAt.HasValue
+                                    || doc.OrderedAt.Value.Date >= itemSummary.OrderedAt.Value.Date)
                         {
                             if (doc.Name == "Возврат" || doc.Name.Contains("при возврате"))
                                 status = 1;

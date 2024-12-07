@@ -3,9 +3,9 @@ using Confiti.MoySklad.Remap.Client;
 using Confiti.MoySklad.Remap.Entities;
 using Confiti.MoySklad.Remap.Queries;
 
-namespace WBImport
+namespace WBImport.Infrastructure
 {
-    public static class MSClient
+    internal static class MSClient
     {
         #region Methods
 

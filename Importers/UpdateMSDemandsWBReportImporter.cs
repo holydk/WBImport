@@ -1,8 +1,10 @@
 ﻿using Confiti.MoySklad.Remap.Api;
 using Confiti.MoySklad.Remap.Client;
 using Confiti.MoySklad.Remap.Entities;
+using WBImport.Infrastructure;
+using WBImport.Models;
 
-namespace WBImport
+namespace WBImport.Importers
 {
     internal class UpdateMSDemandsWBReportImporter : IWBReportImporter
     {
@@ -116,23 +118,10 @@ namespace WBImport
                             if (processedStickerIds.TryGetValue(itemSummary.ShkId, out _))
                                 continue;
 
-                            var orderId = itemSummary.OrderId == 0
-                                // the order ID can be 0 if item was sold by WB warehouse
-                                // steps to reproduce
-                                // 1. Seller uses FBO with auto return to pick-up point
-                                // 2. Item was sold
-                                // 3. Return was requested
-                                // 4. Item go to WB warehouse
-                                // 5. Item was sold twice
-                                // 6. Then new sale document has order ID = 0
-                                // and we should find previous document with order ID
-                                ? itemSummary.Documents.FirstOrDefault(doc => doc.OrderId > 0)?.OrderId
-                                : itemSummary.OrderId;
-
-                            if (!orderId.HasValue || orderId == 0)
+                            if (itemSummary.OrderId == 0)
                                 continue;
 
-                            if (!supplyOrdersById.TryGetValue(orderId.Value, out var _))
+                            if (!supplyOrdersById.TryGetValue(itemSummary.OrderId, out var _))
                                 continue;
 
                             deliveryCostTotal += itemSummary.DeliveryCost;
@@ -160,13 +149,11 @@ namespace WBImport
                     if (demand.Overhead != null)
                         demand.Overhead.Sum = (long)(deliveryCostTotal * 100);
                     else
-                    {
                         demand.Overhead = new DocumentOverhead
                         {
                             Distribution = OverheadDistributionType.Price,
                             Sum = (long)(deliveryCostTotal * 100),
                         };
-                    }
 
                     shouldBeUpdate = true;
                 }
@@ -182,7 +169,7 @@ namespace WBImport
                 Console.WriteLine("Нет отгрузок для обновления.");
                 Console.WriteLine();
                 return;
-            }    
+            }
 
             Console.WriteLine("Обновить отгрузки? (y, n)");
 

@@ -1,7 +1,8 @@
 ﻿using System.Text;
 using ExcelDataReader;
+using WBImport.Models;
 
-namespace WBImport
+namespace WBImport.Parsers
 {
     internal sealed class ExcelWBReportParser : IWBReportParser
     {
