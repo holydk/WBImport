@@ -1,6 +1,6 @@
 ﻿using WBImport.Models;
 
-namespace WBImport.Parsers
+namespace WBImport.Reports.Parsers
 {
     public interface IWBReportParser
     {

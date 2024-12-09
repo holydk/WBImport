@@ -1,7 +1,7 @@
 ﻿using WBImport.Models;
-using WBImport.Parsers;
+using WBImport.Reports.Parsers;
 
-namespace WBImport.Infrastructure
+namespace WBImport.Reports
 {
     internal sealed class WBReportReader
     {

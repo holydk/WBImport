@@ -1,7 +1,6 @@
-﻿using WBImport.Infrastructure;
-using WBImport.Models;
+﻿using WBImport.Models;
 
-namespace WBImport.Importers
+namespace WBImport.Reports.Importers
 {
     internal class ConsoleWBReportImporter : IWBReportImporter
     {

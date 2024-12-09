@@ -4,7 +4,7 @@ using Confiti.MoySklad.Remap.Entities;
 using WBImport.Infrastructure;
 using WBImport.Models;
 
-namespace WBImport.Importers
+namespace WBImport.Reports.Importers
 {
     internal class UpdateMSDemandsWBReportImporter : IWBReportImporter
     {

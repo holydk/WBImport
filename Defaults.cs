@@ -1,5 +1,5 @@
 ﻿using System.Net;
-using WBImport.Importers;
+using WBImport.Reports.Importers;
 
 namespace WBImport
 {

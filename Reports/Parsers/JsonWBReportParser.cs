@@ -1,8 +1,7 @@
 ﻿using System.Text.Json;
 using WBImport.Models;
-using WBImport.Parsers;
 
-namespace WBImport
+namespace WBImport.Reports.Parsers
 {
     internal sealed class JsonWBReportParser : IWBReportParser
     {

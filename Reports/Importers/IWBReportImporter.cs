@@ -1,6 +1,6 @@
 ﻿using WBImport.Models;
 
-namespace WBImport.Importers
+namespace WBImport.Reports.Importers
 {
     public interface IWBReportImporter
     {

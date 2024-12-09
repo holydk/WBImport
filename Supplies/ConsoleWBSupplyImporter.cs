@@ -1,7 +1,7 @@
 ﻿using WBImport.Infrastructure;
 using WBImport.Models;
 
-namespace WBImport.Importers
+namespace WBImport.Supplies
 {
     internal class ConsoleWBSupplyImporter
     {
@@ -31,9 +31,11 @@ namespace WBImport.Importers
                 Console.ResetColor();
                 Console.WriteLine($"Номер заказа: {order.Id}");
 
-                if (order.Barcodes?.Any() == true)
+                if (order.Barcodes?.Length > 0)
+                {
                     foreach (var barcode in order.Barcodes)
                         Console.WriteLine($"Штрих-код: {barcode}");
+                }
 
                 var orderMeta = await WBClient.GetAsync<WBOrderMeta>($"{Defaults.WB_MARKETPLACE_BASE_URL}/orders/{order.Id}/meta");
                 if (orderMeta != null)

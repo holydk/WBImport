@@ -2,7 +2,7 @@
 using ExcelDataReader;
 using WBImport.Models;
 
-namespace WBImport.Parsers
+namespace WBImport.Reports.Parsers
 {
     internal sealed class ExcelWBReportParser : IWBReportParser
     {

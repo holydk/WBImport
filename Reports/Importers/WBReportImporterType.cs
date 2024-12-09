@@ -1,4 +1,4 @@
-﻿namespace WBImport.Importers
+﻿namespace WBImport.Reports.Importers
 {
     public enum WBReportImporterType
     {

@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using WBImport.Models;
 
-namespace WBImport.Infrastructure
+namespace WBImport.Reports
 {
     internal sealed class WBReportAnalyser
     {

@@ -1,7 +1,8 @@
 ﻿using WBImport;
-using WBImport.Importers;
-using WBImport.Infrastructure;
 using WBImport.Models;
+using WBImport.Reports;
+using WBImport.Reports.Importers;
+using WBImport.Supplies;
 
 internal sealed class Program
 {

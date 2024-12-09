@@ -1,4 +1,4 @@
-﻿namespace WBImport.Parsers
+﻿namespace WBImport.Reports.Parsers
 {
     internal sealed class WBReportParserFactory
     {
