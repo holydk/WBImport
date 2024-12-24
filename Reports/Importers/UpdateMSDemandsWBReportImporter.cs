@@ -108,35 +108,38 @@ namespace WBImport.Reports.Importers
                     if (barcodes == null || barcodes.Length == 0)
                         continue;
 
-                    foreach (var barcode in barcodes)
+                    for (var i = 0; i < position.Quantity; i++)
                     {
-                        if (!itemsTotal.TryGetValue(barcode.Value, out var itemTotal))
-                            continue;
-
-                        foreach (var itemSummary in itemTotal)
+                        foreach (var barcode in barcodes)
                         {
-                            if (processedStickerIds.TryGetValue(itemSummary.ShkId, out _))
+                            if (!itemsTotal.TryGetValue(barcode.Value, out var itemTotal))
                                 continue;
 
-                            if (itemSummary.OrderId == 0)
-                                continue;
-
-                            if (!supplyOrdersById.TryGetValue(itemSummary.OrderId, out var _))
-                                continue;
-
-                            deliveryCostTotal += itemSummary.DeliveryCost;
-
-                            if (itemSummary.Cost > decimal.Zero && position.Price != itemSummary.Cost * 100)
+                            foreach (var itemSummary in itemTotal)
                             {
-                                Console.WriteLine($"{demand.Name}. Обновить цену \"{position.Assortment.Name}\": {position.Price / 100} -> {itemSummary.Cost}");
-                                position.Price = (long)(itemSummary.Cost * 100);
+                                if (processedStickerIds.TryGetValue(itemSummary.ShkId, out _))
+                                    continue;
 
-                                shouldBeUpdate = true;
+                                if (itemSummary.OrderId == 0)
+                                    continue;
+
+                                if (!supplyOrdersById.TryGetValue(itemSummary.OrderId, out var _))
+                                    continue;
+
+                                deliveryCostTotal += itemSummary.DeliveryCost;
+
+                                if (itemSummary.Cost > decimal.Zero && position.Price != itemSummary.Cost * 100)
+                                {
+                                    Console.WriteLine($"{demand.Name}. Обновить цену \"{position.Assortment.Name}\": {position.Price / 100} -> {itemSummary.Cost}");
+                                    position.Price = (long)(itemSummary.Cost * 100);
+
+                                    shouldBeUpdate = true;
+                                }
+
+                                processedStickerIds[itemSummary.ShkId] = itemSummary;
+
+                                break;
                             }
-
-                            processedStickerIds[itemSummary.ShkId] = itemSummary;
-
-                            break;
                         }
                     }
                 }

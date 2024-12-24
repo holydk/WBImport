@@ -20,6 +20,9 @@ namespace WBImport.Reports.Importers
             if (itemsTotal == null)
                 return Task.CompletedTask;
 
+            var deliveryCostTotal = decimal.Zero;
+            var salePriceTotal = decimal.Zero;
+
             foreach (var itemSummary in itemsTotal)
             {
                 Console.ForegroundColor = ConsoleColor.Magenta;
@@ -57,8 +60,9 @@ namespace WBImport.Reports.Importers
                     foreach (var doc in itemSummary.Documents.OrderBy(doc => doc.Name))
                     {
                         if (!itemSummary.OrderedAt.HasValue
-                                || doc.OrderedAt.HasValue
-                                    || doc.OrderedAt.Value.Date >= itemSummary.OrderedAt.Value.Date)
+                                || (doc.OrderedAt.HasValue
+                                        && doc.OrderedAt.Value.Date >= itemSummary.OrderedAt.Value.Date)
+                        )
                         {
                             if (doc.Name == "Возврат" || doc.Name.Contains("при возврате"))
                                 status = 1;
@@ -86,13 +90,39 @@ namespace WBImport.Reports.Importers
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("\tПродажа");
+
+                        salePriceTotal += itemSummary.Cost;
                     }
 
                     Console.ResetColor();
                 }
 
+                deliveryCostTotal += itemSummary.DeliveryCost;
+
                 Console.WriteLine();
             }
+
+            // todo: move to analyzer
+            var itemsCount = itemsTotal.Count();
+            if (itemsCount > 0)
+                Console.WriteLine($"Кол-во товаров: {itemsCount}");
+
+            var storageFeeTotal = report
+                .Where(doc => doc.StorageFee > decimal.Zero)
+                .Sum(doc => doc.StorageFee);
+            if (storageFeeTotal > decimal.Zero)
+                Console.WriteLine($"Хранение: {storageFeeTotal} {Defaults.RUB}");
+
+            if (deliveryCostTotal > decimal.Zero)
+                Console.WriteLine($"Логистика: {deliveryCostTotal} {Defaults.RUB}");
+
+            if (salePriceTotal > decimal.Zero)
+            {
+                Console.WriteLine($"К выплате: {salePriceTotal} {Defaults.RUB}");
+                Console.WriteLine($"Выручка: {salePriceTotal - deliveryCostTotal - storageFeeTotal} {Defaults.RUB}");
+            }
+
+            Console.WriteLine();
 
             return Task.CompletedTask;
         }
