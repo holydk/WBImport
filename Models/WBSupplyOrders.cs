@@ -3,7 +3,7 @@ using WBImport.Models;
 
 namespace WBImport
 {
-    public class WBSupplyOrder
+    public class WBSupplyOrders
     {
         #region Properties
 

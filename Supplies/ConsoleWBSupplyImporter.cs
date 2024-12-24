@@ -19,7 +19,7 @@ namespace WBImport.Supplies
             Console.WriteLine($"Дата поставки: {supply.CreatedAt}");
             Console.WriteLine();
 
-            var supplyOrders = await WBClient.GetAsync<WBSupplyOrder>($"{Defaults.WB_MARKETPLACE_BASE_URL}/supplies/{supplyId}/orders");
+            var supplyOrders = await WBClient.GetAsync<WBSupplyOrders>($"{Defaults.WB_MARKETPLACE_BASE_URL}/supplies/{supplyId}/orders");
             var orders = supplyOrders.Orders;
             if (orders == null || orders.Length == 0)
                 return;
@@ -41,9 +41,11 @@ namespace WBImport.Supplies
                 if (orderMeta != null)
                 {
                     var sGrinValues = orderMeta.Meta?.SGtin?.Value;
-                    if (sGrinValues?.Any() == true)
+                    if (sGrinValues?.Length > 0)
+                    {
                         foreach (var code in sGrinValues)
                             Console.WriteLine($"Маркировка: {code}");
+                    }
                 }
 
                 Console.WriteLine();
