@@ -40,6 +40,7 @@ namespace WBImport.Reports.Parsers
                     AssemblyId = rows[i].ItemArray[53] != DBNull.Value ? Convert.ToInt64(rows[i].ItemArray[53]) : 0,
                     Barcode = rows[i].ItemArray[8] != DBNull.Value ? Convert.ToString(rows[i].ItemArray[8]) : string.Empty,
                     BonusTypeName = rows[i].ItemArray[42] != DBNull.Value ? Convert.ToString(rows[i].ItemArray[42]) : string.Empty,
+                    Deduction = rows[i].ItemArray[60] != DBNull.Value ? Convert.ToDecimal(rows[i].ItemArray[60]) : decimal.Zero,
                     DeliveryRub = rows[i].ItemArray[36] != DBNull.Value ? Convert.ToDecimal(rows[i].ItemArray[36]) : decimal.Zero,
                     DocTypeName = rows[i].ItemArray[9] != DBNull.Value ? Convert.ToString(rows[i].ItemArray[9]) : string.Empty,
                     NumberId = rows[i].ItemArray[3] != DBNull.Value ? Convert.ToInt64(rows[i].ItemArray[3]) : 0,
@@ -51,6 +52,7 @@ namespace WBImport.Reports.Parsers
                     SaName = rows[i].ItemArray[5] != DBNull.Value ? Convert.ToString(rows[i].ItemArray[5]) : string.Empty,
                     ShkId = rows[i].ItemArray[55] != DBNull.Value ? Convert.ToInt64(rows[i].ItemArray[55]) : 0,
                     StickerId = rows[i].ItemArray[43] != DBNull.Value ? Convert.ToString(rows[i].ItemArray[43]) : string.Empty,
+                    StorageFee = rows[i].ItemArray[59] != DBNull.Value ? Convert.ToDecimal(rows[i].ItemArray[59]) : decimal.Zero,
                     SupplierOperName = rows[i].ItemArray[10] != DBNull.Value ? Convert.ToString(rows[i].ItemArray[10]) : string.Empty,
                     TsName = rows[i].ItemArray[7] != DBNull.Value ? Convert.ToString(rows[i].ItemArray[7]) : string.Empty,
                 };

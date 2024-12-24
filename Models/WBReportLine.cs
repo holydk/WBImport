@@ -31,6 +31,12 @@ namespace WBImport.Models
         public string BonusTypeName { get; set; }
 
         /// <summary>
+        /// Прочие удержания/выплаты
+        /// </summary>
+        [JsonPropertyName("deduction")]
+        public decimal Deduction { get; set; }
+
+        /// <summary>
         /// Стоимость логистики
         /// </summary>
         [JsonPropertyName("delivery_rub")]
@@ -95,6 +101,12 @@ namespace WBImport.Models
         /// </summary>
         [JsonPropertyName("sticker_id")]
         public string StickerId { get; set; }
+
+        /// <summary>
+        /// Стоимость хранения
+        /// </summary>
+        [JsonPropertyName("storage_fee")]
+        public decimal StorageFee { get; set; }
 
         /// <summary>
         /// Обоснование для оплаты

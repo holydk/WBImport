@@ -102,7 +102,9 @@ namespace WBImport.Reports
                     var cost =
                         doc.Acceptance +
                         doc.DeliveryRub +
-                        doc.Penalty;
+                        doc.Penalty +
+                        doc.StorageFee +
+                        doc.Deduction;
 
                     deliveryCost += cost;
 
